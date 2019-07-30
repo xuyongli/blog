@@ -81,11 +81,63 @@ const emojiStyles = {
 
 做完了吗，嗯，是的，我用chrome的模拟器没啥问题了，那我们赶紧真机看一下效果吧，，，迫不及待搓手中，，，，然鹅，，，，，我是不是很菜？这不是真的吧？也许，睡一觉就好了吧！
 
-### 输入框问题汇总
+### 键盘高度获取方案
 
-#### 键盘高度
+- Android：键盘弹起时，会触发resize事件，页面的高度会被挤压，也就说输入框只要一直固定在页面底部就可以了。
 
-### iOS特有的坑
+  监听window的resize事件，记得区分横竖屏的情况，计算resize事件触发前后window.innerHeight的变化，差值即为键盘高度。
+
+- iOS：键盘弹起前后，不会触发resize事件，页面的高度不变，同时会把页面上fixed的元素变为absolute处理（万恶之源）
+
+  这里没有成熟的前端获取键盘高度的方法，所以依赖了客户端的接口。这里有降级方案，输入框在顶部就可以了。
+
+
+### 重新聚焦input，光标在所有文字的最前面
+
+这个时contentEditable的浏览器支持的bug，解决方法其实也很简单，就是输入框聚焦后，手动的调整光标的位置，关键代码如下
+
+```javascript
+const input = this.inputRef.current;
+// 矫正光标位置
+if (!input || !input.lastChild) return;
+const range = document.createRange();
+const selection = window.getSelection();
+range.selectNodeContents(input.lastChild);
+range.collapse(false);
+selection.removeAllRanges();
+selection.addRange(range);
+```
+
+### iOS下，输入内容后再删除至空，不会显示placeholder
+
+经过排查发现，经过用户输入和删除等操作后，光标后会多出一个br标签，这里监听一下KeyUp事件做一下处理就好，关键代码如下
+
+```javascript
+const keyCode = event.keyCode;
+switch (keyCode) {
+    // backspace
+    case 8:
+    // delete
+    case 46:
+        if (!this.getContent()) {
+            this.setContent('');
+        }
+        break;
+    default:
+        // todo
+}
+```
+
+### 部分安卓手机下，将键盘收起后，输入框不会失去焦点
+
+键盘收起后，也会触发resize事件，这个时候手动触发blur就可以
+
+### 输入内容安全问题
+
+将输入框元素的innerHTML，设置为一个新创建的div的内容，递归遍历所有子节点，将块级元素变为内容加上BR标签，A标签只取href属性，重新生成A标签，保证最后得到的内容是文本、BR标签与A标签的组合。
+
+### 输入内容发送成功后的显示问题
+
 
 ## 总结
 
